@@ -1,0 +1,702 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Womb-to-World KB</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: clinical knowledge-base — left search rail, center evidence panel, overlay graph.
+   Evidence status drives semantic color; entity type drives node hue. */
+:root{
+  --bg:#f4f6f7; --surface:#ffffff; --surface-2:#eef1f2; --line:#d8dee0;
+  --fg:#17211f; --fg-dim:#5a6b67; --fg-faint:#859591;
+  --accent:#0f766e; --accent-soft:#d7eae7;
+  /* evidence status */
+  --ok:#1f8a4c; --ok-bg:#dcf1e4;
+  --partly:#b5820b; --partly-bg:#f6eccf;
+  --contest:#c2561a; --contest-bg:#f7e3d4;
+  --refute:#c0384a; --refute-bg:#f6dce0;
+  --none:#6b7a77; --none-bg:#e6eae9;
+  /* entity types */
+  --t-microbe:#2a8c82; --t-metab:#8a5cc4; --t-cyto:#c2561a;
+  --t-cell:#2563a8; --t-gene:#a8336b; --t-proc:#5a6b67;
+  --t-site:#7a6a3a; --t-interv:#0f766e;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --body:"Inter",-apple-system,system-ui,sans-serif;
+  --display:"Spectral","Iowan Old Style",Georgia,serif;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1514; --surface:#15201e; --surface-2:#1b2826; --line:#2a3836;
+  --fg:#e7edeb; --fg-dim:#9fb0ac; --fg-faint:#6b7c78;
+  --accent:#4db6ab; --accent-soft:#163a36;
+  --ok:#4ec47d; --ok-bg:#12301f;
+  --partly:#d9ab45; --partly-bg:#302714;
+  --contest:#e6854c; --contest-bg:#321f12;
+  --refute:#e0697a; --refute-bg:#331519;
+  --none:#859591; --none-bg:#1f2b29;
+  --t-microbe:#4db6ab; --t-metab:#b08ce0; --t-cyto:#e6854c;
+  --t-cell:#5b9bd8; --t-gene:#d667a0; --t-proc:#9fb0ac;
+  --t-site:#c0ac6e; --t-interv:#4db6ab;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1514; --surface:#15201e; --surface-2:#1b2826; --line:#2a3836;
+  --fg:#e7edeb; --fg-dim:#9fb0ac; --fg-faint:#6b7c78;
+  --accent:#4db6ab; --accent-soft:#163a36;
+  --ok:#4ec47d; --ok-bg:#12301f;
+  --partly:#d9ab45; --partly-bg:#302714;
+  --contest:#e6854c; --contest-bg:#321f12;
+  --refute:#e0697a; --refute-bg:#331519;
+  --none:#859591; --none-bg:#1f2b29;
+  --t-microbe:#4db6ab; --t-metab:#b08ce0; --t-cyto:#e6854c;
+  --t-cell:#5b9bd8; --t-gene:#d667a0; --t-proc:#9fb0ac;
+  --t-site:#c0ac6e; --t-interv:#4db6ab;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;text-wrap:balance}
+a{color:var(--accent)}
+button{font-family:inherit;cursor:pointer}
+.wrap{max-width:1180px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0}
+
+/* header */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;
+  background:var(--surface);border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);
+  z-index:10;background:var(--surface)}
+.hrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:12px}
+.brand{display:flex;align-items:baseline;gap:9px;min-width:0}
+.brand .dot{font-size:1.15rem}
+.brand h1{font-size:1.18rem;letter-spacing:-.01em}
+.brand .v{font:600 .62rem/1 var(--mono);color:var(--accent);border:1px solid var(--accent);
+  border-radius:20px;padding:3px 7px;letter-spacing:.06em}
+.search{flex:1 1 260px;min-width:0;display:flex;align-items:center;gap:8px;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:22px;padding:7px 14px}
+.search input{flex:1;min-width:0;border:0;background:transparent;color:var(--fg);
+  font-size:.92rem;outline:none}
+.search .ic{color:var(--fg-dim)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:transparent;color:var(--fg-dim);
+  border-radius:20px;padding:6px 13px;font-size:.8rem;font-weight:500}
+.tab[aria-selected="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+:root[data-theme="dark"] .tab[aria-selected="true"],
+:root:not([data-theme="light"]) .tab[aria-selected="true"]{color:#07110f}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .tab[aria-selected="true"]{color:#fff}}
+
+/* layout */
+main{padding-block:18px 56px}
+.cols{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start}
+@media(max-width:780px){.cols{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.rail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 74px);max-height:78vh;
+  display:flex;flex-direction:column;overflow:hidden}
+@media(max-width:780px){.rail{position:static;max-height:none}}
+.rail h2{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--fg-dim);
+  font-family:var(--body);font-weight:600;padding:12px 14px 8px}
+.elist{overflow-y:auto;padding:0 8px 10px}
+.erow{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;
+  background:transparent;color:var(--fg);padding:8px 8px;border-radius:7px;font-size:.86rem}
+.erow:hover{background:var(--surface-2)}
+.erow[aria-current="true"]{background:var(--accent-soft)}
+.erow .swatch{width:9px;height:9px;border-radius:50%;flex:none}
+.erow .lab{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.erow .deg{font:600 .66rem/1 var(--mono);color:var(--fg-faint)}
+.filtbar{padding:10px 14px;border-top:1px solid var(--line);display:flex;
+  flex-direction:column;gap:8px}
+.filtbar label{font-size:.72rem;color:var(--fg-dim);display:flex;justify-content:space-between}
+.filtbar input[type=range]{width:100%;accent-color:var(--accent)}
+
+/* detail */
+.detail{min-height:60vh;padding:0}
+.dhead{padding:18px 20px;border-bottom:1px solid var(--line)}
+.dtype{display:inline-flex;align-items:center;gap:7px;font:600 .68rem/1 var(--mono);
+  letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:20px;
+  background:var(--surface-2)}
+.dtype .swatch{width:8px;height:8px;border-radius:50%}
+.dhead h2{font-size:1.5rem;margin:10px 0 4px;letter-spacing:-.01em}
+.dhead p{margin:0;color:var(--fg-dim);font-size:.9rem;max-width:60ch}
+.dactions{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface-2);color:var(--fg);
+  border-radius:8px;padding:7px 12px;font-size:.8rem;font-weight:500;display:inline-flex;
+  align-items:center;gap:6px}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+:root[data-theme="dark"] .btn.primary,:root:not([data-theme="light"]) .btn.primary{color:#07110f}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .btn.primary{color:#fff}}
+
+.conn-section{padding:14px 20px}
+.conn-section:not(:last-child){border-bottom:1px solid var(--line)}
+.conn-section h3{font-family:var(--body);font-size:.74rem;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--fg-dim);font-weight:700;margin-bottom:10px;
+  display:flex;align-items:center;gap:8px}
+.conn-section h3 .ct{font:600 .66rem/1 var(--mono);color:var(--fg-faint)}
+.edge{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:11px 0;
+  border-top:1px dashed var(--line);align-items:start}
+.edge:first-of-type{border-top:0}
+.edge .rel{font-size:.9rem;min-width:0}
+.edge .rel b{font-weight:600}
+.edge .rel .target{color:var(--accent);cursor:pointer;border-bottom:1px solid transparent}
+.edge .rel .target:hover{border-color:var(--accent)}
+.edge .meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none}
+.pill{font:600 .64rem/1 var(--mono);padding:4px 8px;border-radius:20px;white-space:nowrap;
+  letter-spacing:.03em}
+.p-ok{background:var(--ok-bg);color:var(--ok)}
+.p-partly{background:var(--partly-bg);color:var(--partly)}
+.p-contest{background:var(--contest-bg);color:var(--contest)}
+.p-refute{background:var(--refute-bg);color:var(--refute)}
+.p-none{background:var(--none-bg);color:var(--none)}
+.kind{font:600 .6rem/1 var(--mono);letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 7px;border-radius:5px;border:1px solid var(--line);color:var(--fg-dim)}
+.kind.model{border-color:var(--accent);color:var(--accent)}
+.edge .prov{grid-column:1/-1;font-size:.76rem;color:var(--fg-faint);
+  display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.edge .prov .tr{font-family:var(--mono);font-size:.7rem}
+.trmini{display:inline-flex;gap:2px;vertical-align:middle}
+.trmini i{width:11px;height:5px;border-radius:2px;background:var(--line)}
+.trmini i.y{background:var(--ok)} .trmini i.p{background:var(--partly)} .trmini i.n{background:var(--refute)}
+.empty{padding:50px 20px;text-align:center;color:var(--fg-dim)}
+.empty .big{font-family:var(--display);font-size:1.2rem;color:var(--fg);margin-bottom:6px}
+
+/* graph overlay */
+.graphwrap{padding:0}
+#gcanvas{width:100%;height:66vh;display:block;border-radius:var(--r);cursor:grab;touch-action:none}
+.glegend{display:flex;gap:7px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--line)}
+.glegend span{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;color:var(--fg-dim)}
+.glegend .swatch{width:9px;height:9px;border-radius:50%}
+.ghint{padding:10px 16px;font-size:.78rem;color:var(--fg-dim);border-top:1px solid var(--line)}
+
+/* contested / scorecards shared */
+.feed{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.card.contest-card{border-left:3px solid var(--contest)}
+.card h3{font-size:1.05rem;margin-bottom:4px}
+.card .q{color:var(--fg-dim);font-size:.85rem;margin-bottom:12px}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:620px){.vs{grid-template-columns:1fr}}
+.side{border:1px solid var(--line);border-radius:8px;padding:11px 13px;background:var(--surface-2)}
+.side .h{font:600 .66rem/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;
+  margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.side.for .h{color:var(--ok)} .side.against .h{color:var(--refute)}
+.side ul{margin:0;padding-left:16px;font-size:.84rem} .side li{margin:4px 0}
+.scorehead{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:12px}
+.metric{font-variant-numeric:tabular-nums}
+.metric .n{font:600 1.5rem/1 var(--display)} .metric .l{font-size:.68rem;color:var(--fg-dim);
+  text-transform:uppercase;letter-spacing:.06em}
+.bars{display:flex;gap:16px;flex-wrap:wrap;margin:6px 0 12px}
+.bar{flex:1 1 150px;min-width:140px}
+.bar .lab{font-size:.72rem;color:var(--fg-dim);display:flex;justify-content:space-between;margin-bottom:3px}
+.track{height:8px;background:var(--surface-2);border-radius:5px;overflow:hidden;position:relative}
+.track .fill{height:100%;border-radius:5px}
+.track .shuf{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--refute)}
+.trust-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tchip{font:600 .66rem/1.3 var(--mono);padding:5px 8px;border-radius:6px;display:flex;
+  align-items:center;gap:5px;background:var(--surface-2);color:var(--fg-dim)}
+.tchip .b{width:8px;height:8px;border-radius:50%}
+.tchip .b.y{background:var(--ok)} .tchip .b.p{background:var(--partly)} .tchip .b.n{background:var(--refute)}
+.feat{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.feat .f{font:500 .74rem/1 var(--mono);padding:5px 8px;border-radius:6px;background:var(--surface-2);
+  border:1px solid var(--line)}
+.feat .f .up{color:var(--ok)} .feat .f .dn{color:var(--refute)}
+.secnote{font-size:.82rem;color:var(--fg-dim);margin:2px 0 16px;max-width:72ch}
+.view{display:none} .view.on{display:block}
+.foot{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);
+  font-size:.76rem;color:var(--fg-faint);max-width:80ch}
+.foot a{color:var(--fg-dim)}
+.themebtn{border:1px solid var(--line);background:transparent;color:var(--fg-dim);
+  border-radius:8px;width:34px;height:34px;flex:none}
+</style>
+
+<header>
+ <div class="wrap">
+  <div class="hrow">
+   <div class="brand">
+    <span class="dot">🧬</span>
+    <h1>Womb-to-World</h1>
+    <span class="v">v0.1 · demo</span>
+   </div>
+   <div class="search">
+    <span class="ic">⌕</span>
+    <input id="q" type="text" placeholder="Search a microbe, cytokine, cell, gene…" autocomplete="off" aria-label="Search entities">
+   </div>
+   <button class="themebtn" id="theme" title="Toggle theme" aria-label="Toggle theme">◐</button>
+  </div>
+  <div class="hrow" style="padding-top:0">
+   <div class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-view="explore" aria-selected="true">Explore</button>
+    <button class="tab" role="tab" data-view="graph" aria-selected="false">Graph</button>
+    <button class="tab" role="tab" data-view="chains" aria-selected="false">Semantic chains</button>
+    <button class="tab" role="tab" data-view="contested" aria-selected="false">Contested claims</button>
+    <button class="tab" role="tab" data-view="models" aria-selected="false">Model scorecards</button>
+   </div>
+  </div>
+ </div>
+</header>
+
+<main class="wrap">
+
+ <!-- EXPLORE -->
+ <section class="view on" id="v-explore">
+  <div class="cols">
+   <aside class="panel rail">
+    <h2>Entities <span id="ecount"></span></h2>
+    <div class="elist" id="elist"></div>
+    <div class="filtbar">
+     <label>Min. trust for model edges <span id="trval">0</span>/5</label>
+     <input id="trust" type="range" min="0" max="5" value="0" step="1">
+     <label style="cursor:pointer"><input type="checkbox" id="hideRefute"> Hide refuted / not-supported</label>
+    </div>
+   </aside>
+   <div class="panel detail" id="detail"></div>
+  </div>
+ </section>
+
+ <!-- GRAPH -->
+ <section class="view" id="v-graph">
+  <div class="panel graphwrap">
+   <canvas id="gcanvas"></canvas>
+   <div class="glegend" id="glegend"></div>
+   <div class="ghint">Drag nodes to rearrange · click a node to open it in Explore · edge thickness = trust. Model edges are dashed.</div>
+  </div>
+ </section>
+
+ <!-- CHAINS -->
+ <section class="view" id="v-chains">
+  <p class="secnote">A mechanism is only as strong as its weakest link. Each step shows its evidence type and status, so a chain that looks clean on paper reveals where it actually rests on one in-vitro run or a contested fetal sample.</p>
+  <div class="feed" id="chainfeed"></div>
+ </section>
+
+ <!-- CONTESTED -->
+ <section class="view" id="v-contested">
+  <p class="secnote">Claims where the published literature and the data-derived models disagree, or where the literature disagrees with itself. This is the view PregBase does not have: every edge there carries equal weight.</p>
+  <div class="feed" id="contestfeed"></div>
+ </section>
+
+ <!-- MODELS -->
+ <section class="view" id="v-models">
+  <p class="secnote">Each card is one question from the notebook, scored against a shuffled-label baseline and a linear baseline, with the five-point trust audit and the known-truth check. Numbers are read straight from <span style="font-family:var(--mono);font-size:.82em">results_summary.json</span>.</p>
+  <div class="feed" id="modelfeed"></div>
+ </section>
+
+ <div class="foot">
+  Demonstration knowledge base for the fetal / early-life immunity XAI project. Literature edges are drawn from published studies (Mishra 2021 <i>Cell</i>; Rackaityte 2020 <i>Nat Med</i>; de Goffau 2019 <i>Nature</i>; Kennedy 2023 <i>Nature</i>; Laursen 2021 <i>Nat Microbiol</i>; Henrick 2021 <i>Cell</i>; Frese 2017 <i>mSphere</i>). Model-derived edges come from the project notebook's own trust-audited results and should be read as hypotheses, not clinical facts. Not for clinical use.
+ </div>
+</main>
+
+<script>
+/* ---------- DATA ---------- */
+const T={microbe:'--t-microbe',metab:'--t-metab',cyto:'--t-cyto',cell:'--t-cell',
+  gene:'--t-gene',proc:'--t-proc',site:'--t-site',interv:'--t-interv'};
+const TYPE_LABEL={microbe:'Microbe',metab:'Metabolite',cyto:'Cytokine',cell:'Cell / lineage',
+  gene:'Gene / receptor',proc:'Process / state',site:'Anatomical site',interv:'Intervention'};
+
+const E={}; // entities
+function ent(id,label,type,note){E[id]={id,label,type,note}}
+ent('b_infantis','B. longum subsp. infantis','microbe','HMO-specialist bifidobacterium; the strain supplemented as EVC001.');
+ent('b_longum','Bifidobacterium longum','microbe','Early breastfed-gut coloniser; top EVC001-arm marker in the trial model.');
+ent('b_breve','Bifidobacterium breve','microbe','HMO-utilising, aromatic-lactic-acid-producing bifidobacterium.');
+ent('b_bifidum','Bifidobacterium bifidum','microbe','HMO-utilising bifidobacterium carrying the aromatic lactate dehydrogenase.');
+ent('bifido_fam','Bifidobacteriaceae','microbe','Family-level signal used in the gut→cytokine model (rank 3 of 24).');
+ent('staph','Staphylococcus spp.','microbe','Early oxygen-tolerant coloniser; reported in fetal tissue (contested).');
+ent('lacto','Lactobacillus spp.','microbe','Reported enriched in fetal meconium (contested as contaminant).');
+ent('micrococcus','Micrococcus luteus','microbe','Isolated from fetal meconium; common clean-room contaminant.');
+ent('sagalactiae','Streptococcus agalactiae','microbe','Group B Strep; the one genuine placenta signal (~5%).');
+ent('enterobact','Enterobacteriaceae','microbe','Facultative early coloniser; positive marker of gut Th2/Th17 tone.');
+ent('hmo','Human milk oligosaccharides','metab','Indigestible milk sugars that selectively feed B. infantis.');
+ent('ila','Indole-3-lactic acid (ILA)','metab','Tryptophan-derived aromatic lactic acid made by bifidobacteria.');
+ent('ahr','AhR','gene','Aryl hydrocarbon receptor; ILA is an agonist.');
+ent('hca3','HCA3','gene','Hydroxycarboxylic acid receptor 3; second ILA target.');
+ent('lgals1','LGALS1 (galectin-1)','gene','Immunoregulatory gene; the Fig 6 headline — not recovered within-run.');
+ent('ifnb','IFN-β','cyto','Rises in the EVC001 arm; top fecal-cytokine marker.');
+ent('il17a','IL-17A','cyto','Th17 effector cytokine; part of the tone the probiotic dampens.');
+ent('il22','IL-22','cyto','Th17/mucosal cytokine; falls in the EVC001 arm.');
+ent('il5','IL-5','cyto','Th2 cytokine; falls within-infant after supplementation.');
+ent('mip3a','MIP-3a (CCL20)','cyto','Th17-recruiting chemokine; strongest down-marker of EVC001.');
+ent('th2','Th2 cells','cell','Allergy-associated T-helper subset (IL-4/5/13).');
+ent('th17','Th17 cells','cell','Mucosal inflammatory T-helper subset (IL-17/22).');
+ent('cd4','CD4+ T cells','cell','Helper T cells modulated by ILA ex vivo.');
+ent('mono','Monocytes','cell','Innate cells modulated by ILA ex vivo.');
+ent('fetal_tmem','Fetal memory T cells','cell','Effector-memory T cells in fetal lymph nodes (Mishra).');
+ent('evc001','EVC001 supplementation','interv','B. infantis fed day 7–28 in the IMPRINT trial.');
+ent('placenta','Placenta','site','Maternal-fetal organ; reported to have no resident microbiome.');
+ent('fetal_gut','Fetal gut / meconium','site','Mid-gestation intestine; the low-biomass battleground.');
+ent('priming','Fetal immune priming','proc','Hypothesis that in-utero microbes train fetal immunity.');
+ent('succession','Microbiome succession','proc','Ordered gut colonisation that makes a microbiome age-clock work.');
+ent('tone','Gut Th2/Th17 tone','proc','Composite cytokine score the probiotic is thought to lower.');
+ent('bifidorich','Bifido-rich immune state','proc','Blood-immune signature of a bifido-dominated gut (model target).');
+
+/* edges: s,t,rel(target phrase),dir, kind lit|model, status, trust(0-5 for model), prov, chapter */
+const X=[];
+function lit(s,t,rel,status,prov){X.push({s,t,rel,kind:'lit',status,prov})}
+function mdl(s,t,rel,status,trust,prov,ch){X.push({s,t,rel,kind:'model',status,trust,prov,ch})}
+
+// literature
+lit('hmo','b_infantis','is selectively consumed by','ok','Frese 2017 mSphere; Henrick 2021 Cell');
+lit('evc001','b_infantis','establishes durable colonisation of','ok','Frese 2017 mSphere — persists >30 d after day-28 stop');
+lit('b_infantis','ila','produces (via aromatic lactate dehydrogenase)','ok','Laursen 2021 Nat Microbiol');
+lit('b_breve','ila','produces (via ALDH)','ok','Laursen 2021 Nat Microbiol');
+lit('b_bifidum','ila','produces (via ALDH)','ok','Laursen 2021 Nat Microbiol');
+lit('ila','ahr','acts as an agonist of','ok','Laursen 2021 Nat Microbiol');
+lit('ila','hca3','acts as an agonist of','ok','Laursen 2021 Nat Microbiol');
+lit('ila','cd4','modulates ex vivo, dose-dependently,','partly','Laursen 2021 — ex vivo only');
+lit('ila','mono','modulates ex vivo, dose-dependently,','partly','Laursen 2021 — ex vivo only');
+lit('b_infantis','priming','is proposed to imprint infant immunity in','ok','Henrick 2021 Cell');
+lit('staph','fetal_tmem','is reported to activate','contest','Mishra 2021 Cell — low-biomass, disputed');
+lit('lacto','fetal_tmem','is reported to activate','contest','Mishra 2021 Cell — low-biomass, disputed');
+lit('micrococcus','fetal_gut','is isolated from, with immunomodulatory capacity, in','contest','Rackaityte 2020 Nat Med — subset of specimens');
+lit('priming','fetal_gut','is hypothesised to occur in','contest','Mishra 2021 / Rackaityte 2020 vs Kennedy 2023');
+lit('placenta','priming','shows no resident microbiome to drive','refute','de Goffau 2019 Nature — no placental microbiome');
+lit('sagalactiae','placenta','is the one genuine (~5%) bacterial signal in','ok','de Goffau 2019 Nature');
+lit('fetal_gut','priming','signals are likely contamination, not drivers of','refute','Kennedy 2023 Nature — low-biomass pitfalls');
+
+// model-derived (from results_summary.json)
+mdl('succession','fetal_gut','predicts infant age (microbiome clock, ρ=0.45)','ok',6,'ch1 — Spearman 0.448 vs shuffled −0.04; succession concordance 0.75','ch1');
+mdl('bifido_fam','tone','predicts gut Th2/Th17 tone (weakly, ρ=0.10)','partly',5,'ch4c — Spearman 0.097; Bifidobacteriaceae rank 3/24, negative','ch4c');
+mdl('evc001','b_longum','is recovered by XAI as the top stool marker (AUC 0.89)','ok',6,'ch4a positive control — B. longum rank 1/60','ch4a');
+mdl('evc001','ifnb','raises fecal IFN-β (AUC 0.87)','ok',5,'ch4b — IFN-β top up-marker; MIP-3a/IL-21/IL-33 down','ch4b');
+mdl('evc001','mip3a','lowers fecal MIP-3a / Th17 tone (AUC 0.87)','ok',5,'ch4b — strongest down-marker','ch4b');
+mdl('evc001','il5','lowers within-infant IL-5 (Δ AUC 0.84)','ok',6,'ch4b_delta — survives within-infant baseline','ch4b_delta');
+mdl('bifidorich','priming','is NOT predictable from blood immune state (AUC 0.51)','refute',2,'ch3 — below shuffled baseline 0.56; unstable across folds','ch3');
+mdl('b_infantis','th2','does NOT reprogram Th2 cells once run is controlled','refute',2,'ch5 within-run — LGALS1 not recovered; run-confounded','ch5');
+mdl('b_infantis','th17','does NOT reprogram Th17 cells once run is controlled','refute',1,'ch5 within-run — not supported','ch5');
+
+/* degree index */
+const DEG={}; X.forEach(e=>{DEG[e.s]=(DEG[e.s]||0)+1;DEG[e.t]=(DEG[e.t]||0)+1});
+
+/* ---------- STATE ---------- */
+let current=null, trustMin=0, hideRefute=false, view='explore';
+const STATUS_LABEL={ok:'supported',partly:'partly',contest:'contested',refute:'refuted/none'};
+const STATUS_CLASS={ok:'p-ok',partly:'p-partly',contest:'p-contest',refute:'p-refute'};
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function edgeVisible(e){
+  if(hideRefute && (e.status==='refute')) return false;
+  if(e.kind==='model' && e.trust<trustMin) return false;
+  return true;
+}
+function edgesOf(id){return X.filter(e=>(e.s===id||e.t===id)&&edgeVisible(e))}
+
+/* ---------- RENDER: entity list ---------- */
+const elist=document.getElementById('elist');
+function renderList(filter){
+  const q=(filter||'').toLowerCase();
+  const ids=Object.keys(E).filter(id=>!q||E[id].label.toLowerCase().includes(q)||E[id].type.includes(q))
+    .sort((a,b)=>(DEG[b]||0)-(DEG[a]||0));
+  document.getElementById('ecount').textContent='('+ids.length+')';
+  elist.innerHTML='';
+  ids.forEach(id=>{
+    const e=E[id];const b=document.createElement('button');
+    b.className='erow';b.setAttribute('role','listitem');
+    if(id===current)b.setAttribute('aria-current','true');
+    b.innerHTML=`<span class="swatch" style="background:${cssv(T[e.type])}"></span>
+      <span class="lab">${e.label}</span><span class="deg">${DEG[id]||0}</span>`;
+    b.onclick=()=>select(id);
+    elist.appendChild(b);
+  });
+}
+
+/* ---------- RENDER: detail ---------- */
+const detail=document.getElementById('detail');
+function trMini(n){let h='<span class="trmini">';for(let i=0;i<5;i++)h+=`<i class="${i<n?'y':''}"></i>`;return h+'</span>'}
+function edgeHTML(e,fromId){
+  const other=e.s===fromId?e.t:e.s;
+  const oe=E[other];
+  const arrow=e.s===fromId?'→':'←';
+  const rel=e.s===fromId?`<b>${E[fromId].label}</b> ${e.rel} <span class="target" data-id="${other}">${oe.label}</span>`
+    :`<span class="target" data-id="${other}">${oe.label}</span> ${e.rel} <b>${E[fromId].label}</b>`;
+  let prov=`<span class="kind ${e.kind==='model'?'model':''}">${e.kind==='model'?'model-derived':'literature'}</span>
+    <span>${e.prov}</span>`;
+  if(e.kind==='model') prov+=`<span class="tr">trust ${trMini(e.trust)} ${e.trust}/5</span>`;
+  return `<div class="edge">
+    <div class="rel">${rel}</div>
+    <div class="meta"><span class="pill ${STATUS_CLASS[e.status]}">${STATUS_LABEL[e.status]}</span></div>
+    <div class="prov">${prov}</div></div>`;
+}
+function select(id){
+  current=id;
+  const e=E[id];
+  const edges=edgesOf(id);
+  const lit=edges.filter(x=>x.kind==='lit');
+  const mdlE=edges.filter(x=>x.kind==='model');
+  let html=`<div class="dhead">
+    <span class="dtype"><span class="swatch" style="background:${cssv(T[e.type])}"></span>${TYPE_LABEL[e.type]}</span>
+    <h2>${e.label}</h2><p>${e.note}</p>
+    <div class="dactions">
+      <button class="btn primary" data-act="graph">◉ Focus in graph</button>
+      <button class="btn" data-act="csv">↓ Edges (CSV)</button>
+    </div></div>`;
+  if(!edges.length){
+    html+=`<div class="empty"><div class="big">No edges at this trust level</div>
+      Lower the trust threshold or clear the refuted filter to see this entity's connections.</div>`;
+  }else{
+    if(lit.length){html+=`<div class="conn-section"><h3>Literature connections <span class="ct">${lit.length}</span></h3>${lit.map(x=>edgeHTML(x,id)).join('')}</div>`}
+    if(mdlE.length){html+=`<div class="conn-section"><h3>Model-derived connections <span class="ct">${mdlE.length}</span></h3>${mdlE.map(x=>edgeHTML(x,id)).join('')}</div>`}
+  }
+  detail.innerHTML=html;
+  detail.querySelectorAll('.target').forEach(t=>t.onclick=()=>select(t.dataset.id));
+  detail.querySelector('[data-act="graph"]').onclick=()=>{setView('graph');focusNode(id)};
+  detail.querySelector('[data-act="csv"]').onclick=()=>exportCSV(id);
+  renderList(document.getElementById('q').value);
+}
+
+/* ---------- CSV ---------- */
+function exportCSV(id){
+  const rows=[['source','relation','target','kind','status','trust','provenance']];
+  edgesOf(id).forEach(e=>rows.push([E[e.s].label,e.rel,E[e.t].label,e.kind,STATUS_LABEL[e.status],e.kind==='model'?e.trust:'',e.prov]));
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  // downloads are inert in the artifact frame — show the text for copy instead
+  navigator.clipboard?.writeText(csv).then(()=>toast('Edges copied to clipboard as CSV')).catch(()=>{
+    const w=detail.querySelector('.dhead');const pre=document.createElement('textarea');
+    pre.value=csv;pre.style.cssText='width:100%;height:120px;margin-top:10px;font:12px var(--mono);';
+    w.appendChild(pre);pre.select();
+  });
+}
+let toastT;
+function toast(msg){
+  let el=document.getElementById('toast');
+  if(!el){el=document.createElement('div');el.id='toast';
+    el.style.cssText='position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.82rem;z-index:50;box-shadow:0 4px 18px rgba(0,0,0,.25)';
+    document.body.appendChild(el)}
+  el.textContent=msg;el.style.opacity='1';clearTimeout(toastT);
+  toastT=setTimeout(()=>el.style.opacity='0',1800);
+}
+
+/* ---------- GRAPH (canvas force) ---------- */
+const canvas=document.getElementById('gcanvas');const ctx=canvas.getContext('2d');
+let nodes=[],links=[],dragN=null,focusId=null,raf=null,dpr=1;
+function buildGraph(){
+  const ids=Object.keys(E);
+  const cx=canvas.clientWidth/2,cy=canvas.clientHeight/2;
+  nodes=ids.map((id,i)=>{
+    const a=i/ids.length*Math.PI*2;
+    return {id,x:cx+Math.cos(a)*160+(Math.random()-.5)*40,y:cy+Math.sin(a)*140+(Math.random()-.5)*40,vx:0,vy:0};
+  });
+  const nmap={};nodes.forEach(n=>nmap[n.id]=n);
+  links=X.filter(edgeVisible).map(e=>({...e,a:nmap[e.s],b:nmap[e.t]}));
+}
+function tick(){
+  const w=canvas.clientWidth,h=canvas.clientHeight,cx=w/2,cy=h/2;
+  for(let i=0;i<nodes.length;i++){
+    const n=nodes[i];
+    for(let j=i+1;j<nodes.length;j++){
+      const m=nodes[j];let dx=n.x-m.x,dy=n.y-m.y,d=Math.hypot(dx,dy)||1;
+      if(d<220){const f=(220-d)/d*0.015;n.vx+=dx*f;n.vy+=dy*f;m.vx-=dx*f;m.vy-=dy*f}
+    }
+    n.vx+=(cx-n.x)*0.0012;n.vy+=(cy-n.y)*0.0012;
+  }
+  links.forEach(l=>{
+    let dx=l.b.x-l.a.x,dy=l.b.y-l.a.y,d=Math.hypot(dx,dy)||1,f=(d-120)*0.01;
+    const fx=dx/d*f,fy=dy/d*f;l.a.vx+=fx;l.a.vy+=fy;l.b.vx-=fx;l.b.vy-=fy;
+  });
+  nodes.forEach(n=>{if(n===dragN)return;n.x+=n.vx*=.85;n.y+=n.vy*=.85;
+    n.x=Math.max(22,Math.min(w-22,n.x));n.y=Math.max(22,Math.min(h-22,n.y))});
+  draw();raf=requestAnimationFrame(tick);
+}
+const statusColor={ok:'--ok',partly:'--partly',contest:'--contest',refute:'--refute'};
+function draw(){
+  const w=canvas.clientWidth,h=canvas.clientHeight;
+  ctx.clearRect(0,0,w,h);
+  links.forEach(l=>{
+    ctx.beginPath();ctx.moveTo(l.a.x,l.a.y);ctx.lineTo(l.b.x,l.b.y);
+    ctx.strokeStyle=cssv(statusColor[l.status])+'';
+    ctx.globalAlpha=.55;
+    ctx.lineWidth=l.kind==='model'?Math.max(1,l.trust*0.7):2.2;
+    ctx.setLineDash(l.kind==='model'?[4,3]:[]);
+    ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+  });
+  nodes.forEach(n=>{
+    const e=E[n.id];const r=6+Math.min(7,(DEG[n.id]||0));
+    const foc=n.id===focusId;
+    ctx.beginPath();ctx.arc(n.x,n.y,r,0,7);
+    ctx.fillStyle=cssv(T[e.type]);ctx.fill();
+    if(foc){ctx.lineWidth=2.5;ctx.strokeStyle=cssv('--fg');ctx.stroke()}
+    if(foc||r>9||n===dragN){
+      ctx.fillStyle=cssv('--fg');ctx.font='600 11px '+cssv('--body').split(',')[0].replace(/"/g,'')+',sans-serif';
+      ctx.textAlign='center';ctx.fillText(e.label.length>22?e.label.slice(0,21)+'…':e.label,n.x,n.y-r-5);
+    }
+  });
+}
+function sizeCanvas(){
+  dpr=window.devicePixelRatio||1;
+  canvas.width=canvas.clientWidth*dpr;canvas.height=canvas.clientHeight*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+function startGraph(){sizeCanvas();buildGraph();if(raf)cancelAnimationFrame(raf);tick();}
+function nodeAt(x,y){return nodes.find(n=>Math.hypot(n.x-x,n.y-y)<14)}
+function evtPos(ev){const r=canvas.getBoundingClientRect();const t=ev.touches?ev.touches[0]:ev;
+  return {x:t.clientX-r.left,y:t.clientY-r.top}}
+canvas.addEventListener('pointerdown',ev=>{const p=evtPos(ev);const n=nodeAt(p.x,p.y);
+  if(n){dragN=n;n._moved=false;canvas.setPointerCapture(ev.pointerId);canvas.style.cursor='grabbing'}});
+canvas.addEventListener('pointermove',ev=>{if(!dragN)return;const p=evtPos(ev);dragN.x=p.x;dragN.y=p.y;dragN.vx=dragN.vy=0;dragN._moved=true});
+canvas.addEventListener('pointerup',ev=>{if(dragN&&!dragN._moved){select(dragN.id);setView('explore')}dragN=null;canvas.style.cursor='grab'});
+function focusNode(id){focusId=id;setView('graph');}
+function renderLegend(){
+  const g=document.getElementById('glegend');
+  g.innerHTML=Object.keys(TYPE_LABEL).map(k=>`<span><span class="swatch" style="background:${cssv(T[k])}"></span>${TYPE_LABEL[k]}</span>`).join('')
+   +' &nbsp; '+[['ok','supported'],['partly','partly'],['contest','contested'],['refute','refuted/none']].map(([k,l])=>`<span><span class="swatch" style="background:${cssv(statusColor[k])}"></span>${l}</span>`).join('');
+}
+
+/* ---------- SEMANTIC CHAINS ---------- */
+const CHAINS=[
+ {title:'Breast milk to a calmer gut',ids:['hmo','b_infantis','ila','ahr','cd4']},
+ {title:'The trial mechanism, end to end',ids:['evc001','b_infantis','ifnb']},
+ {title:'The contested in-utero route',ids:['fetal_gut','priming','fetal_tmem']},
+ {title:'Probiotic to Th17 tone',ids:['evc001','b_infantis','mip3a']}
+];
+function findEdge(a,b){return X.find(e=>(e.s===a&&e.t===b)||(e.s===b&&e.t===a))}
+function weakest(ids){
+  const order={ok:3,partly:2,contest:1,refute:0};let min='ok';
+  for(let i=0;i<ids.length-1;i++){const e=findEdge(ids[i],ids[i+1]);if(e&&order[e.status]<order[min])min=e.status}
+  return min;
+}
+function renderChains(){
+  const f=document.getElementById('chainfeed');f.innerHTML='';
+  CHAINS.forEach(c=>{
+    const card=document.createElement('div');card.className='card';
+    const w=weakest(c.ids);
+    let steps='';
+    for(let i=0;i<c.ids.length;i++){
+      const e=E[c.ids[i]];
+      steps+=`<span class="target" data-id="${e.id}" style="cursor:pointer;color:var(--accent);font-weight:600">${e.label}</span>`;
+      if(i<c.ids.length-1){
+        const edge=findEdge(c.ids[i],c.ids[i+1]);
+        const st=edge?edge.status:'refute';
+        steps+=` <span class="pill ${STATUS_CLASS[st]}" style="margin:0 2px">${edge?(edge.kind==='model'?'model':'lit'):'—'} · ${STATUS_LABEL[st]}</span> → `;
+      }
+    }
+    card.innerHTML=`<h3>${c.title}</h3>
+      <div class="q">Weakest link: <b style="color:var(--${statusColor[w].slice(2)})">${STATUS_LABEL[w]}</b></div>
+      <div style="line-height:2.2">${steps}</div>`;
+    f.appendChild(card);
+  });
+  f.querySelectorAll('.target').forEach(t=>t.onclick=()=>{select(t.dataset.id);setView('explore')});
+}
+
+/* ---------- CONTESTED ---------- */
+const CONTESTED=[
+ {title:'Is there a fetal microbiome that primes immunity?',
+  q:'The pivotal split in the field — and the reason your KB weights edges instead of just listing them.',
+  forH:'Reported in-utero signal',
+  forL:['Mishra 2021 (Cell): live Staphylococcus & Lactobacillus in 2nd-trimester fetal tissue activate memory T cells.',
+        'Rackaityte 2020 (Nat Med): viable Micrococcus luteus in fetal meconium, immunomodulatory in a subset.'],
+  againstH:'Likely contamination',
+  againstL:['Kennedy 2023 (Nature): fetal signals fit low-biomass contamination; incompatible with germ-free mammal biology.',
+        'de Goffau 2019 (Nature): human placenta has no resident microbiome (only ~5% S. agalactiae).']},
+ {title:'Do microbes and blood immunity move together?',
+  q:'Literature assumes a gut–blood axis; your own model does not find one.',
+  forH:'Literature expectation',
+  forL:['Henrick 2021 (Cell): Bifidobacterium imprints the systemic infant immune system.'],
+  againstH:'Model-derived (ch3)',
+  againstL:['Blood immune state predicts a Bifido-rich gut at AUC 0.51 — below the shuffled baseline of 0.56.',
+        'Unstable across folds; fails the trust audit. Scored "not supported".']},
+ {title:'Do Bifido products reprogram Th2/Th17 cells?',
+  q:'The Fig 6 in-vitro claim versus what survives run-confound control.',
+  forH:'Cross-run signal',
+  forL:['Apparent AUC separation when sequencing runs are pooled.'],
+  againstH:'Within-run (ch5)',
+  againstL:['Once sequencing run is controlled, LGALS1 is not recovered and AUC collapses.',
+        'Reclassified "not supported" — the original signal tracked the run, not the exposure.']}
+];
+function renderContested(){
+  const f=document.getElementById('contestfeed');f.innerHTML='';
+  CONTESTED.forEach(c=>{
+    const card=document.createElement('div');card.className='card contest-card';
+    card.innerHTML=`<h3>${c.title}</h3><div class="q">${c.q}</div>
+      <div class="vs">
+        <div class="side for"><div class="h">◆ ${c.forH}</div><ul>${c.forL.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+        <div class="side against"><div class="h">◆ ${c.againstH}</div><ul>${c.againstL.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+      </div>`;
+    f.appendChild(card);
+  });
+}
+
+/* ---------- MODEL SCORECARDS (from results_summary.json) ---------- */
+const MODELS=[
+ {q:'Does the microbiome assemble in a predictable order?',model:'Microbiome clock (stool families → age)',metric:'Spearman',score:0.448,lin:0.468,shuf:-0.044,n:347,verdict:'ok',truth:'succession concordance 0.75 ✓',
+  trust:['y','y','y','y','y','y'],feat:[['Clostridiaceae','up'],['Actinomycetaceae','up'],['Staphylococcaceae','dn'],['Halomonadaceae','dn']]},
+ {q:'Does blood immunity mature on a shared schedule?',model:'Immune clock (blood → age)',metric:'Spearman',score:0.906,lin:0.903,shuf:-0.043,n:154,verdict:'partly',truth:'known-truth overlap 6/20 ✗',
+  trust:['y','y','y','y','y','y'],feat:[['plasmacytoid DCs','up'],['Naive B cells','up'],['CD14 monocytes','dn']]},
+ {q:'XAI positive control: can it find the bacterium that was given?',model:'Stool species → EVC001 arm',metric:'AUC',score:0.888,lin:0.858,shuf:0.433,n:60,verdict:'ok',truth:'B. longum rank 1/60 ✓',
+  trust:['y','y','y','y','y','y'],feat:[['B. longum','up'],['E. coli','dn'],['H. parainfluenzae','dn']]},
+ {q:'Does giving B. infantis change gut immunity?',model:'Fecal cytokines (day 40–60) → EVC001',metric:'AUC',score:0.872,lin:0.864,shuf:0.571,n:83,verdict:'ok',truth:'Th2/Th17 down, IFN-β up — 0.67 ✓',
+  trust:['y','y','y','y','p','y'],feat:[['IFN-β','up'],['MIP-3a','dn'],['IL-22','dn'],['IL-21','dn']]},
+ {q:'Does the trial effect survive within-infant analysis?',model:'Change from own day-6 baseline → EVC001',metric:'AUC',score:0.844,lin:0.804,shuf:0.408,n:81,verdict:'ok',truth:'concordance 0.83 ✓',
+  trust:['y','y','y','y','y','y'],feat:[['Δ IL-21','dn'],['Δ MIP-3a','dn'],['Δ TNF-α','up']]},
+ {q:'Do the microbes themselves predict gut Th2/Th17 tone?',model:'Gut families → Th2/Th17 score',metric:'Spearman',score:0.097,lin:0.097,shuf:0.03,n:124,verdict:'partly',truth:'Bifidobacteriaceae rank 3/24 ✓',
+  trust:['y','y','y','y','p','y'],feat:[['Enterobacteriaceae','up'],['Bifidobacteriaceae','dn'],['Enterococcaceae','dn']]},
+ {q:'Do microbes and blood immunity move together?',model:'Immune state → Bifido-rich',metric:'AUC',score:0.509,lin:0.452,shuf:0.56,n:175,verdict:'refute',truth:'below shuffled baseline',
+  trust:['n','y','y','y','n','y'],feat:[['CXCL5','up'],['FGF-23','dn'],['preterm','dn']]},
+ {q:'Do Bifido products reprogram Th2 cells? (within-run)',model:'Th2 single cells → exposure',metric:'AUC',score:0.139,lin:0.022,shuf:0.139,n:2400,verdict:'refute',truth:'LGALS1 not recovered',
+  trust:['n','y','n','n','p','y'],feat:[['IL22','up'],['KLRC4','dn']]}
+];
+const TRUST_LABELS=['> shuffled','> linear','faithful','rand-IG differs','stable','IG completeness'];
+function renderModels(){
+  const f=document.getElementById('modelfeed');f.innerHTML='';
+  MODELS.forEach(m=>{
+    const card=document.createElement('div');card.className='card';
+    const pct=v=>Math.max(2,Math.min(100,m.metric==='AUC'?v*100:(v*0.5+0.5)*100));
+    const col=`var(--${statusColor[m.verdict].slice(2)})`;
+    const trust=m.trust.map((t,i)=>`<span class="tchip"><span class="b ${t}"></span>${TRUST_LABELS[i]}</span>`).join('');
+    const feats=m.feat.map(([n,d])=>`<span class="f">${n} <span class="${d}">${d==='up'?'▲':'▼'}</span></span>`).join('');
+    card.innerHTML=`
+      <div class="scorehead">
+        <span class="pill ${STATUS_CLASS[m.verdict]}">${STATUS_LABEL[m.verdict]}</span>
+        <div class="metric"><span class="n">${m.score.toFixed(m.metric==='AUC'?3:3)}</span> <span class="l">${m.metric}</span></div>
+        <div class="metric"><span class="l">n = ${m.n}</span></div>
+      </div>
+      <h3 style="font-size:1rem">${m.q}</h3>
+      <div class="q" style="font-family:var(--mono);font-size:.78rem">${m.model}</div>
+      <div class="bars">
+        <div class="bar"><div class="lab"><span>model</span><span>${m.score.toFixed(3)}</span></div>
+          <div class="track"><div class="fill" style="width:${pct(m.score)}%;background:${col}"></div>
+          <div class="shuf" style="left:${pct(m.shuf)}%" title="shuffled baseline"></div></div></div>
+        <div class="bar"><div class="lab"><span>linear baseline</span><span>${m.lin.toFixed(3)}</span></div>
+          <div class="track"><div class="fill" style="width:${pct(m.lin)}%;background:var(--fg-dim)"></div></div></div>
+      </div>
+      <div class="q" style="font-size:.78rem">Known-truth check: ${m.truth} · red tick = shuffled-label baseline</div>
+      <div class="trust-grid">${trust}</div>
+      <div class="feat">${feats}</div>`;
+    f.appendChild(card);
+  });
+}
+
+/* ---------- VIEW SWITCH ---------- */
+function setView(v){
+  view=v;
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.view===v));
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+  if(v==='graph'){renderLegend();startGraph();}
+  else if(raf){cancelAnimationFrame(raf);raf=null}
+  if(['explore','graph','chains','contested','models'].includes(v)){
+    try{location.hash=v}catch(e){}
+  }
+}
+document.getElementById('tabs').addEventListener('click',e=>{
+  const t=e.target.closest('.tab');if(t)setView(t.dataset.view);
+});
+
+/* ---------- WIRING ---------- */
+document.getElementById('q').addEventListener('input',e=>renderList(e.target.value));
+document.getElementById('trust').addEventListener('input',e=>{
+  trustMin=+e.target.value;document.getElementById('trval').textContent=trustMin;
+  if(current)select(current);
+});
+document.getElementById('hideRefute').addEventListener('change',e=>{
+  hideRefute=e.target.checked;if(current)select(current);
+});
+document.getElementById('theme').addEventListener('click',()=>{
+  const r=document.documentElement;
+  const dark=r.getAttribute('data-theme')==='dark'||(!r.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme:dark)').matches);
+  r.setAttribute('data-theme',dark?'light':'dark');
+  if(current)select(current);if(view==='graph'){renderLegend();draw()}
+});
+
+renderList('');renderChains();renderContested();renderModels();
+const h=(location.hash||'').replace('#','');
+if(['graph','chains','contested','models'].includes(h))setView(h);
+select('b_infantis');
+</script>
+
+</body></html>
